@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網址提取器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-6 text-gray-800">網址提取器</h1>
+        <p class="text-center text-gray-600 mb-8">
+            請將包含網址的文字貼到下方的方塊中，然後點擊按鈕來提取所有網址。
+        </p>
+
+        <!-- 輸入區域 -->
+        <div class="mb-6">
+            <textarea id="textInput"
+                      class="w-full h-48 p-4 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+                      placeholder="請在此貼上您的文字..."></textarea>
+        </div>
+
+        <!-- 按鈕區域 -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8">
+            <button onclick="extractUrls()"
+                    class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                提取網址
+            </button>
+            <button onclick="copyUrls()"
+                    class="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                    id="copyButton" style="display: none;">
+                複製所有網址
+            </button>
+        </div>
+
+        <!-- 輸出區域 -->
+        <div id="resultContainer" class="mt-8">
+            <h2 id="resultTitle" class="text-2xl font-semibold mb-4 text-gray-800" style="display: none;">提取的網址：</h2>
+            <div id="urlList" class="space-y-3">
+                <!-- 網址將會顯示在這裡 -->
+            </div>
+            <p id="messageBox" class="text-sm text-center text-gray-500 mt-4"></p>
+        </div>
+    </div>
+
+    <script>
+        // 獲取 DOM 元素
+        const textInput = document.getElementById('textInput');
+        const urlList = document.getElementById('urlList');
+        const resultTitle = document.getElementById('resultTitle');
+        const copyButton = document.getElementById('copyButton');
+        const messageBox = document.getElementById('messageBox');
+
+        /**
+         * 提取文字中的所有網址。
+         * 使用正則表達式來匹配以 http:// 或 https:// 開頭的網址。
+         * @returns {void}
+         */
+        function extractUrls() {
+            // 清空先前的結果和訊息
+            urlList.innerHTML = '';
+            messageBox.textContent = '';
+            resultTitle.style.display = 'none';
+            copyButton.style.display = 'none';
+
+            const text = textInput.value;
+            // 匹配 http 或 https 開頭的網址，後續接任何非空白字元
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = text.match(urlRegex);
+
+            if (urls && urls.length > 0) {
+                resultTitle.style.display = 'block';
+                copyButton.style.display = 'block';
+                urls.forEach(url => {
+                    const urlItem = document.createElement('div');
+                    urlItem.className = 'p-3 bg-gray-100 rounded-lg break-all shadow-sm';
+                    urlItem.innerHTML = `<a href="${url}" target="_blank" class="text-blue-600 hover:underline">${url}</a>`;
+                    urlList.appendChild(urlItem);
+                });
+                messageBox.textContent = `成功提取了 ${urls.length} 個網址。`;
+            } else {
+                resultTitle.style.display = 'none';
+                copyButton.style.display = 'none';
+                messageBox.textContent = '沒有找到任何網址。';
+            }
+        }
+
+        /**
+         * 複製所有提取的網址到剪貼簿。
+         * 使用 document.execCommand('copy') 因為 navigator.clipboard 可能在某些環境中無法使用。
+         * @returns {void}
+         */
+        function copyUrls() {
+            const urls = Array.from(urlList.querySelectorAll('a')).map(a => a.href).join('\n');
+            if (urls.length > 0) {
+                // 創建一個臨時的 textarea 來執行複製操作
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = urls;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        messageBox.textContent = '所有網址已複製到剪貼簿！';
+                    } else {
+                        messageBox.textContent = '複製失敗，請手動複製。';
+                    }
+                } catch (err) {
+                    messageBox.textContent = '複製失敗，請手動複製。';
+                }
+                document.body.removeChild(tempTextArea);
+            } else {
+                messageBox.textContent = '沒有網址可以複製。';
+            }
+        }
+    </script>
+</body>
+</html>
+ 
