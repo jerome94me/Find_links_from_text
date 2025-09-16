@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>網址提取器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-6 text-gray-800">網址提取器</h1>
+        <p class="text-center text-gray-600 mb-8">
+            請將包含網址的文字貼到下方的方塊中，然後點擊按鈕來提取所有網址。
+        </p>
+
+        <div class="mb-6">
+            <textarea id="textInput"
+                      class="w-full h-48 p-4 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+                      placeholder="請在此貼上您的文字..."></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="flex items-center space-x-2 w-full sm:w-auto">
+                <input type="checkbox" id="looseRegex" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                <label for="looseRegex" class="text-gray-700 select-none">啟用寬鬆模式 (提取 www. 等)</label>
+            </div>
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                <button onclick="extractUrls()"
+                        class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    提取網址
+                </button>
+            </div>
+        </div>
+        
+        <div id="filterContainer" class="mb-6" style="display: none;">
+            <input type="text" id="filterInput" placeholder="在此輸入關鍵字來過濾網址..."
+                   class="w-full p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-200">
+        </div>
+        
+        <div id="resultContainer" class="mt-8">
+            <h2 id="resultTitle" class="text-2xl font-semibold mb-4 text-gray-800" style="display: none;">提取的網址：</h2>
+            <div class="flex flex-wrap gap-4 mb-6" id="actionButtons" style="display: none;">
+                <button onclick="copyUrls()"
+                        class="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                    複製所有網址
+                </button>
+                <button onclick="openAllUrls()"
+                        class="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                    在新分頁開啟所有網址
+                </button>
+                <button onclick="downloadUrls()"
+                        class="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-xl shadow-md hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                    下載網址
+                </button>
+            </div>
+            
+            <div id="urlList" class="space-y-3">
+                </div>
+            <p id="messageBox" class="text-sm text-center text-gray-500 mt-4"></p>
+        </div>
+    </div>
+
+    <script>
+        // 獲取 DOM 元素
+        const textInput = document.getElementById('textInput');
+        const urlList = document.getElementById('urlList');
+        const resultTitle = document.getElementById('resultTitle');
+        const messageBox = document.getElementById('messageBox');
+        const looseRegexCheckbox = document.getElementById('looseRegex');
+        const filterInput = document.getElementById('filterInput');
+        const filterContainer = document.getElementById('filterContainer');
+        const actionButtons = document.getElementById('actionButtons');
+
+        let extractedUrls = []; // 全域變數，用來儲存提取出的所有網址
+
+        /**
+         * 提取文字中的所有網址。
+         * @returns {void}
+         */
+        function extractUrls() {
+            // 清空先前的結果和訊息
+            urlList.innerHTML = '';
+            messageBox.textContent = '';
+            resultTitle.style.display = 'none';
+            filterContainer.style.display = 'none';
+            actionButtons.style.display = 'none';
+            filterInput.value = '';
+
+            const text = textInput.value;
+            let urlRegex;
+            if (looseRegexCheckbox.checked) {
+                // 寬鬆模式：匹配 http(s):// 或 www. 或以子網域開頭的網址
+                urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[\w-]+\.[\w-]+\.[^\s]+)/g;
+            } else {
+                // 嚴格模式：只匹配 http(s):// 開頭的網址
+                urlRegex = /(https?:\/\/[^\s]+)/g;
+            }
+
+            const foundUrls = text.match(urlRegex);
+
+            if (foundUrls && foundUrls.length > 0) {
+                const uniqueUrls = Array.from(new Set(foundUrls));
+                const duplicateCount = foundUrls.length - uniqueUrls.length;
+                extractedUrls = uniqueUrls;
+
+                // 顯示結果
+                displayUrls(extractedUrls);
+
+                // 顯示控制項
+                resultTitle.style.display = 'block';
+                filterContainer.style.display = 'block';
+                actionButtons.style.display = 'flex';
+                
+                // 顯示提取與重複網址的訊息
+                messageBox.textContent = `成功提取了 ${extractedUrls.length} 個獨特的網址。`;
+                if (duplicateCount > 0) {
+                    messageBox.textContent += ` (移除 ${duplicateCount} 個重複項目)`;
+                }
+
+            } else {
+                resultTitle.style.display = 'none';
+                filterContainer.style.display = 'none';
+                actionButtons.style.display = 'none';
+                messageBox.textContent = '沒有找到任何網址。';
+            }
+        }
+
+        /**
+         * 根據過濾器輸入顯示網址清單。
+         * @param {string[]} urlsToDisplay - 要顯示的網址陣列。
+         */
+        function displayUrls(urlsToDisplay) {
+            urlList.innerHTML = '';
+            urlsToDisplay.forEach(url => {
+                const urlItem = document.createElement('div');
+                urlItem.className = 'p-3 bg-gray-100 rounded-lg break-all shadow-sm';
+                urlItem.innerHTML = `<a href="${url.startsWith('http') ? url : '//' + url}" target="_blank" class="text-blue-600 hover:underline">${url}</a>`;
+                urlList.appendChild(urlItem);
+            });
+        }
+
+        /**
+         * 根據使用者輸入的關鍵字過濾網址。
+         */
+        filterInput.addEventListener('input', () => {
+            const filterText = filterInput.value.toLowerCase();
+            const filteredUrls = extractedUrls.filter(url => url.toLowerCase().includes(filterText));
+            displayUrls(filteredUrls);
+            messageBox.textContent = `篩選後顯示 ${filteredUrls.length} 個網址。`;
+        });
+
+        /**
+         * 複製所有提取的網址到剪貼簿。
+         */
+        function copyUrls() {
+            const urlsToCopy = Array.from(urlList.querySelectorAll('a')).map(a => a.href).join('\n');
+            if (urlsToCopy.length > 0) {
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = urlsToCopy;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                try {
+                    document.execCommand('copy');
+                    messageBox.textContent = '所有網址已複製到剪貼簿！';
+                } catch (err) {
+                    messageBox.textContent = '複製失敗，請手動複製。';
+                }
+                document.body.removeChild(tempTextArea);
+            } else {
+                messageBox.textContent = '沒有網址可以複製。';
+            }
+        }
+
+        /**
+         * 在新分頁中開啟所有提取的網址。
+         */
+        function openAllUrls() {
+            const urls = Array.from(urlList.querySelectorAll('a')).map(a => a.href);
+            if (urls.length > 0) {
+                urls.forEach(url => {
+                    window.open(url, '_blank');
+                });
+                messageBox.textContent = `正在新分頁中開啟 ${urls.length} 個網址...`;
+            } else {
+                messageBox.textContent = '沒有網址可以開啟。';
+            }
+        }
+        
+        /**
+         * 將所有提取的網址下載為 .txt 檔案。
+         */
+        function downloadUrls() {
+            const urlsToDownload = Array.from(urlList.querySelectorAll('a')).map(a => a.href).join('\n');
+            if (urlsToDownload.length > 0) {
+                const blob = new Blob([urlsToDownload], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'extracted_urls.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                messageBox.textContent = '網址已下載為 extracted_urls.txt。';
+            } else {
+                message.textContent = '沒有網址可以下載。';
+            }
+        }
+    </script>
+</body>
+</html>
